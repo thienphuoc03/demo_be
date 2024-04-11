@@ -1,0 +1,2 @@
+export const ROLE_DEFAULT='USER'
+export const LIMIT_NUNBER_DEFAULT=1000

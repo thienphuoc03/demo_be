@@ -1,0 +1,79 @@
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    ports:
+      - '2181:2181'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    ports:
+      - '9092:9092'
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9093,OUTSIDE://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_LISTENERS: INSIDE://kafka:9093,OUTSIDE://:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  postgres:
+    image: postgres
+    container_name: postgres
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    ports:
+      - '5055:80'
+    environment:
+      PGADMIN_DEFAULT_EMAIL: postgres@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: postgres
+    depends_on:
+      - postgres
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  user_microservice:
+    build:
+      context: .
+      dockerfile: ./apps/users/Dockerfile
+    container_name: user_microservice
+    command: npm run start:dev users
+    depends_on:
+      - postgres
+      - zookeeper
+      - kafka
+  products_microservice:
+    build:
+      context: .
+      dockerfile: ./apps/products/Dockerfile
+    container_name: products_microservice
+    command: npm run start:dev products
+    depends_on:
+      - postgres
+      - zookeeper
+      - kafka
+  api_gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api_gateway
+    ports:
+      - '3000:3000'
+    depends_on:
+      - postgres
+      - zookeeper
+      - kafka
+      - user_microservice
+      - products_microservice
